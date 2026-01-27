@@ -1,81 +1,42 @@
-"""
-Test Snowflake DAG
-This DAG demonstrates basic Snowflake integration with Apache Airflow
-"""
-from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
+from datetime import datetime, timedelta
 
-# Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2024, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
 
-# Define the DAG
-dag = DAG(
-    'test_snowflake',
+with DAG(
+    'test_snowflake_connection',
     default_args=default_args,
-    description='A simple DAG to test Snowflake connection',
-    schedule_interval=timedelta(days=1),
+    description='Test de connexion Snowflake',
+    schedule_interval=None,  # Manuel uniquement
+    start_date=datetime(2024, 1, 1),
     catchup=False,
     tags=['test', 'snowflake'],
-)
+) as dag:
 
-# Test Snowflake connection with a simple query
-test_query = SnowflakeOperator(
-    task_id='test_snowflake_connection',
-    snowflake_conn_id='snowflake_default',
-    sql='SELECT CURRENT_VERSION();',
-    dag=dag,
-)
+    # Test simple : récupérer la version de Snowflake
+    test_connection = SnowflakeOperator(
+        task_id='test_version',
+        snowflake_conn_id='snowflake_default',
+        sql='SELECT CURRENT_VERSION();'
+    )
 
-# Create a test table
-create_table = SnowflakeOperator(
-    task_id='create_test_table',
-    snowflake_conn_id='snowflake_default',
-    sql="""
-        CREATE TABLE IF NOT EXISTS test_table (
-            id INTEGER,
-            name VARCHAR(100),
-            created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
-        );
-    """,
-    dag=dag,
-)
+    # Exemple de requête
+    query_exemple = SnowflakeOperator(
+        task_id='query_exemple',
+        snowflake_conn_id='snowflake_default',
+        sql='''
+            SELECT CURRENT_DATE() as date_jour,
+                   CURRENT_USER() as utilisateur,
+                   CURRENT_WAREHOUSE() as warehouse;
+        '''
+    )
 
-# Insert test data (using MERGE to avoid duplicates on reruns)
-insert_data = SnowflakeOperator(
-    task_id='insert_test_data',
-    snowflake_conn_id='snowflake_default',
-    sql="""
-        MERGE INTO test_table AS target
-        USING (
-            SELECT 1 AS id, 'Test Record 1' AS name
-            UNION ALL
-            SELECT 2, 'Test Record 2'
-            UNION ALL
-            SELECT 3, 'Test Record 3'
-        ) AS source
-        ON target.id = source.id
-        WHEN NOT MATCHED THEN
-            INSERT (id, name) VALUES (source.id, source.name);
-    """,
-    dag=dag,
-)
-
-# Query test data
-query_data = SnowflakeOperator(
-    task_id='query_test_data',
-    snowflake_conn_id='snowflake_default',
-    sql='SELECT * FROM test_table;',
-    dag=dag,
-)
-
-# Set task dependencies
-test_query >> create_table >> insert_data >> query_data
+    test_connection >> query_exemple
