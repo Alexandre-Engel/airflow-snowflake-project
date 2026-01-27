@@ -49,16 +49,22 @@ create_table = SnowflakeOperator(
     dag=dag,
 )
 
-# Insert test data
+# Insert test data (using MERGE to avoid duplicates on reruns)
 insert_data = SnowflakeOperator(
     task_id='insert_test_data',
     snowflake_conn_id='snowflake_default',
     sql="""
-        INSERT INTO test_table (id, name)
-        VALUES 
-            (1, 'Test Record 1'),
-            (2, 'Test Record 2'),
-            (3, 'Test Record 3');
+        MERGE INTO test_table AS target
+        USING (
+            SELECT 1 AS id, 'Test Record 1' AS name
+            UNION ALL
+            SELECT 2, 'Test Record 2'
+            UNION ALL
+            SELECT 3, 'Test Record 3'
+        ) AS source
+        ON target.id = source.id
+        WHEN NOT MATCHED THEN
+            INSERT (id, name) VALUES (source.id, source.name);
     """,
     dag=dag,
 )
