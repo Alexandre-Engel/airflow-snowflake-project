@@ -10,4 +10,6 @@ snowflake-connector-python==3.13.1
 # Additional dependencies
 cryptography==42.0.4
 
+certifi
+
 aiohttp
