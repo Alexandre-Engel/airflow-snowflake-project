@@ -1,45 +1,45 @@
-# Python
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
 venv/
 ENV/
+.venv/
 env/
-.venv
+*.egg-info/
+dist/
+build/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Airflow
+# ===== Airflow =====
 airflow.db
 airflow.cfg
-logs/
-airflow-webserver.pid
+webserver_config.py
 standalone_admin_password.txt
+airflow-webserver.pid
+logs/
+*.log
 
-# OS
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
 .DS_Store
-Thumbs.db
+
+# ===== Secrets & Environment =====
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# ===== Temporary files =====
+*.tmp
+*.bak
+/tmp/
+airflow.db-shm
+.gitignore
+airflow.db-wal
+simple_auth_manager_passwords.json.generated
