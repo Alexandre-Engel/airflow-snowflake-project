@@ -1,23 +1,36 @@
-# Airflow Snowflake Project
+# Airflow Snowflake Pipeline
 
-Pipeline de données avec Apache Airflow 3 et Snowflake.
+Data pipeline using Apache Airflow 3 and Snowflake for sales data ingestion.
 
-## Prérequis
+## Architecture
+
+```
+data/
+├── inbox/      ← Drop CSV files here
+└── archive/    ← Processed files moved here automatically
+```
+
+## Quick Start
+
+### 1. Prerequisites
 
 - Python 3.11+
-- Compte Snowflake
+- Snowflake account
 
-## Installation
+### 2. Snowflake Setup
+
+Run `snowflake/init.sql` in Snowflake to create:
+- Warehouse, database, schemas (Medallion architecture)
+- File format and stage for data loading
+- Target table for sales data
+
+### 3. Airflow Setup
 
 ```bash
-# Créer l'environnement virtuel
-python -m venv venv
-source venv/bin/activate
-
-# Installer les dépendances
+# Install dependencies
 pip install -r requirements.txt
 
-# Initialiser Airflow
+# Initialize Airflow
 export AIRFLOW_HOME=$(pwd)
 airflow db init
 airflow users create \
@@ -29,36 +42,48 @@ airflow users create \
     --password admin
 ```
 
-## Configuration Snowflake
+### 4. Configure Snowflake Connection
 
-Configurer la connexion `snowflake_conn_id` dans l'UI Airflow :
-- **Conn Type**: Snowflake
-- **Account**: votre_compte.region
-- **Login**: votre_user
-- **Password**: votre_password
-- **Schema**: votre_schema
-- **Database**: votre_database
-- **Warehouse**: votre_warehouse
+In Airflow UI (Admin → Connections), create `snowflake_conn_id`:
 
-## Démarrage
+| Field | Value |
+|-------|-------|
+| Conn Type | Snowflake |
+| Account | your_account.region |
+| Login | your_username |
+| Password | your_password |
+| Schema | RAW |
+| Database | RETAIL_DB |
+| Warehouse | RETAIL_WH |
+| Role | AIRFLOW_ROLE |
+
+### 5. Run
 
 ```bash
 ./start_airflow.sh
 ```
 
-Interface disponible sur http://localhost:8080
-
-## Structure
-
-```
-├── dags/                    # DAGs Airflow
-├── .devcontainer/           # Configuration Dev Container
-├── requirements.txt         # Dépendances Python
-└── start_airflow.sh         # Script de démarrage
-```
+Access UI at http://localhost:8080
 
 ## DAGs
 
 | DAG | Description |
 |-----|-------------|
-| `00_test_snowflake_connection` | Test de connexion Snowflake |
+| `00_test_snowflake_connection` | Validates Snowflake connectivity |
+| `01_ingest_sales_data` | Loads CSVs from inbox → Snowflake → archive |
+
+## Data Ingestion
+
+See [docs/INGESTION.md](docs/INGESTION.md) for detailed documentation.
+
+## Project Structure
+
+```
+├── dags/                   # Airflow DAG definitions
+├── data/
+│   ├── inbox/              # CSV files to process
+│   └── archive/            # Processed files
+├── snowflake/              # SQL setup scripts
+├── docs/                   # Documentation
+└── .devcontainer/          # Dev container config
+```
