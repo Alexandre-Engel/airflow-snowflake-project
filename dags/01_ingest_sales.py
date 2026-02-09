@@ -1,6 +1,11 @@
 """
-Sales Data Ingestion Pipeline
-Loads CSV files from inbox folder to Snowflake, then archives them.
+Ingestion des ventes depuis des fichiers CSV vers Snowflake.
+Workflow:
+    1. Scan du dossier inbox pour les fichiers CSV
+    2. Upload vers le Stage Snowflake
+    3. Chargement dans la table RAW
+    4. Archivage des fichiers traités
+    5. Lancement de dbt pour la transformation (RAW → STAGING -> ANALYTICS)
 """
 
 from airflow.decorators import dag, task
@@ -9,7 +14,7 @@ from pathlib import Path
 import os
 import shutil
 import certifi
-
+from airflow.operators.bash import BashOperator
 
 AIRFLOW_HOME = Path(os.environ.get("AIRFLOW_HOME", "/workspaces/airflow-snowflake-project"))
 INBOX_PATH = AIRFLOW_HOME / "data" / "inbox"
@@ -107,7 +112,9 @@ def sales_ingestion_pipeline():
             FILE_FORMAT = (FORMAT_NAME = RETAIL_DB.RAW.MY_CSV_FORMAT)
             PATTERN = '.*\\.csv\\.gz'
             ON_ERROR = 'SKIP_FILE'
+            FORCE = TRUE
         """
+        # Le Force TRUE est utilisé dans les tests, mais à enlever en production pour éviter les doublons
 
         result = hook.run(sql_copy, handler=lambda cur: cur.fetchall())
         rows_loaded = sum(row[3] for row in result) if result else 0
@@ -151,12 +158,28 @@ def sales_ingestion_pipeline():
         hook.run(f"REMOVE {STAGE_PATH} PATTERN='.*\\.csv\\.gz'")
         print("🧹 Stage nettoyé")
 
-    # DAG Flow
+    # ========== DBT TRANSFORMATION ==========
+    # BashOperator pour lancer dbt (transforme RAW → STAGING)
+    dbt_run = BashOperator(
+        task_id="dbt_run_staging",
+        bash_command=(
+            f"source {AIRFLOW_HOME}/venv/bin/activate && "
+            f"cd {AIRFLOW_HOME}/retail_transformation && "
+            "dbt run"
+        ),
+        append_env=True,
+    )
+
+    # ========== DAG FLOW ==========
+    # 1. Ingestion: inbox → Snowflake RAW
     files = get_files_to_process()
     uploaded = upload_to_stage(files)
-    load_into_table(uploaded)
+    rows_loaded = load_into_table(uploaded)
     archived = archive_files(uploaded)
-    cleanup_stage(archived)
+    stage_cleaned = cleanup_stage(archived)
+
+    # 2. Transformation: RAW → STAGING (via dbt)
+    stage_cleaned >> dbt_run
 
 
 sales_ingestion_pipeline()
