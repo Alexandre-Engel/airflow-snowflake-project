@@ -2,7 +2,30 @@ version: 2
 
 sources:
   - name: retail_raw
+    description: "Données brutes de ventes chargées depuis les fichiers CSV par Airflow"
     database: RETAIL_DB
     schema: RAW
+    freshness:
+      warn_after: {count: 24, period: hour}
+      error_after: {count: 48, period: hour}
+    loaded_at_field: LOAD_TIMESTAMP
     tables:
       - name: salesdata_inbound
+        description: "Table de réception des ventes brutes (Bronze layer)"
+        columns:
+          - name: ID_SALE
+            description: "Identifiant unique de la vente"
+            tests:
+              - not_null
+          - name: SALE_DATE
+            description: "Date de la vente"
+            tests:
+              - not_null
+          - name: PRODUCT_NAME
+            description: "Nom du produit (EN)"
+            tests:
+              - not_null
+          - name: SOURCE_FILE_NAME
+            description: "Nom du fichier source (utilisé pour déterminer la boutique)"
+            tests:
+              - not_null

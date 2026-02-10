@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: stg_ventes
+    description: >
+      Table de staging des ventes (Silver layer).
+      Nettoie, enrichit et convertit les données brutes :
+      - Traduction des noms de produits en français (via catalogue)
+      - Conversion des montants en EUR (via référentiel boutiques)
+      - Rattachement à la boutique/ville/pays d'origine
+    columns:
+      - name: id_vente
+        description: "Identifiant de la vente (unique par boutique, pas globalement)"
+        tests:
+          - not_null
+
+      - name: date_vente
+        description: "Date de la vente (normalisée en YYYY-MM-DD)"
+        tests:
+          - not_null
+
+      - name: nom_produit
+        description: "Nom du produit en français (via le catalogue)"
+        tests:
+          - not_null
+
+      - name: categorie
+        description: "Catégorie du produit en français"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Vêtements", "Accessoires", "Clothing", "Accessories"]
+
+      - name: devise
+        description: "Devise locale de la vente"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["EUR", "USD", "JPY"]
+
+      - name: montant_total_eur
+        description: "Montant total converti en euros"
+        tests:
+          - not_null
+
+      - name: nom_boutique
+        description: "Nom de la boutique d'origine"
+        tests:
+          - not_null
+
+      - name: ville
+        description: "Ville de la boutique"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Paris", "Tokyo", "New York", "Inconnu"]
+
+      - name: pays
+        description: "Pays de la boutique"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["France", "Japon", "USA", "Inconnu"]
