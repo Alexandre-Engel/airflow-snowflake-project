@@ -41,6 +41,9 @@ data/archive/*.csv
 !data/inbox/.gitkeep
 !data/archive/.gitkeep
 
+retail_transformation/seeds/*.csv
+retail_transformation/seeds/.gitkeep
+
 # ===== Temporary files =====
 *.tmp
 *.bak
@@ -48,3 +51,4 @@ data/archive/*.csv
 airflow.db-shm
 airflow.db-wal
 simple_auth_manager_passwords.json.generated
+
