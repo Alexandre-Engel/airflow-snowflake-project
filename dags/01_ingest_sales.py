@@ -123,8 +123,9 @@ def sales_ingestion_pipeline():
         return rows_loaded
 
     @task
-    def archive_files(uploaded_files: list[str]) -> list[str]:
-        """Déplace les fichiers traités vers le dossier archive."""
+    def archive_files(rows_loaded: int, uploaded_files: list[str]) -> list[str]:
+        """Déplace les fichiers traités vers le dossier archive.
+        Attend que le chargement soit terminé (rows_loaded) avant d'archiver."""
         if not uploaded_files:
             return []
 
@@ -158,27 +159,32 @@ def sales_ingestion_pipeline():
         hook.run(f"REMOVE {STAGE_PATH} PATTERN='.*\\.csv\\.gz'")
         print("🧹 Stage nettoyé")
 
-    # ========== DBT TRANSFORMATION ==========
-    # BashOperator pour lancer dbt (transforme RAW → STAGING)
+    # dbt seed : charge les référentiels (catalogue_produits, dim_boutiques)
+    # dbt run  : transforme RAW → STAGING → ANALYTICS
+    # dbt test : valide la qualité des données (tests génériques + singuliers)
+    # dbt docs : génère la documentation interactive du projet
     dbt_run = BashOperator(
         task_id="dbt_run_staging",
         bash_command=(
             f"source {AIRFLOW_HOME}/venv/bin/activate && "
             f"cd {AIRFLOW_HOME}/retail_transformation && "
-            "dbt run"
+            "dbt seed && dbt run && dbt test && dbt docs generate"
         ),
         append_env=True,
     )
 
-    # ========== DAG FLOW ==========
-    # 1. Ingestion: inbox → Snowflake RAW
+    # 1. Scan des CSV dans inbox/
     files = get_files_to_process()
+
+    # 2. Ingestion: inbox → Snowflake RAW (données brutes, aucune transformation)
     uploaded = upload_to_stage(files)
     rows_loaded = load_into_table(uploaded)
-    archived = archive_files(uploaded)
+
+    # 3. Archivage si le chargement est réussi
+    archived = archive_files(rows_loaded, uploaded)
     stage_cleaned = cleanup_stage(archived)
 
-    # 2. Transformation: RAW → STAGING (via dbt)
+    # 4. Transformation: RAW → STAGING → ANALYTICS (via dbt)
     stage_cleaned >> dbt_run
 
 
