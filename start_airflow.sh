@@ -6,6 +6,10 @@
 # Définir AIRFLOW_HOME - CRITIQUE pour que Airflow trouve les bons DAGs
 export AIRFLOW_HOME=/workspaces/airflow-snowflake-project
 
+# Configuration Snowflake pour gérer les certificats / OCSP
+# Désactive la validation OCSP du cache server (utile si problèmes cert S3)
+export SNOWFLAKE_TEST_OCSP_MODE=FAIL_OPEN
+
 # Activation de l'environnement virtuel
 source /workspaces/airflow-snowflake-project/venv/bin/activate
 
@@ -53,6 +57,12 @@ echo "📅 Démarrage du Scheduler..."
 nohup airflow scheduler >> /tmp/airflow-scheduler.log 2>&1 &
 SCHEDULER_PID=$!
 echo "   Scheduler PID: $SCHEDULER_PID"
+
+# Lancer le dag-processor (Airflow 3) pour parser les DAGs
+echo "🧠 Démarrage du DAG Processor..."
+nohup airflow dag-processor >> /tmp/airflow-dag-processor.log 2>&1 &
+DAG_PROCESSOR_PID=$!
+echo "   DAG Processor PID: $DAG_PROCESSOR_PID"
 
 # Attendre que le scheduler soit prêt
 sleep 5

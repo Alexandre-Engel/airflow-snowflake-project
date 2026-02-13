@@ -35,11 +35,20 @@ logs/
 *.key
 secrets/
 
+# ===== Data files =====
+data/inbox/*.csv
+data/archive/*.csv
+!data/inbox/.gitkeep
+!data/archive/.gitkeep
+
+retail_transformation/seeds/*.csv
+retail_transformation/seeds/.gitkeep
+
 # ===== Temporary files =====
 *.tmp
 *.bak
 /tmp/
 airflow.db-shm
-.gitignore
 airflow.db-wal
 simple_auth_manager_passwords.json.generated
+

@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: fact_ventes_mensuelles
+    description: >
+      Table de faits des ventes agrégées par mois, boutique, ville et pays (Gold layer).
+      Utilisée pour analyser le chiffre d'affaires mensuel par point de vente.
+    columns:
+      - name: mois
+        description: "Premier jour du mois (DATE_TRUNC)"
+        tests:
+          - not_null
+
+      - name: nom_boutique
+        description: "Nom de la boutique"
+        tests:
+          - not_null
+
+      - name: ca_mensuel_eur
+        description: "Chiffre d'affaires mensuel en euros"
+        tests:
+          - not_null
+
+      - name: nombre_de_ventes
+        description: "Nombre total de transactions"
+        tests:
+          - not_null
+
+  - name: top_produits_performance
+    description: >
+      Classement des produits par chiffre d'affaires généré en euros (Gold layer).
+      Utilisé pour identifier les best-sellers et les produits sous-performants.
+    columns:
+      - name: nom_produit
+        description: "Nom du produit en français"
+        tests:
+          - unique
+          - not_null
+
+      - name: total_ca_genere_eur
+        description: "CA total généré par ce produit en euros"
+        tests:
+          - not_null
+
+      - name: rang_ca
+        description: "Rang du produit par CA décroissant"
+        tests:
+          - not_null
