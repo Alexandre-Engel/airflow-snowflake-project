@@ -1,89 +1,50 @@
-# Airflow Snowflake Pipeline
+# Retail Data Pipeline : Airflow, Snowflake & dbt
 
-Data pipeline using Apache Airflow 3 and Snowflake for sales data ingestion.
+Ce projet automatise l'ingestion et la transformation des données de ventes pour trois boutiques internationales (Paris, Tokyo, New York). Le pipeline gère le cycle complet : de la réception des CSV bruts à la génération de KPIs financiers.
 
-## Architecture
+## Architecture du projet
 
-```
-data/
-├── inbox/      ← Drop CSV files here
-└── archive/    ← Processed files moved here automatically
-```
+Le pipeline repose sur une architecture **Medallion** (ELT) intégrée dans Snowflake :
 
-## Quick Start
+* **Bronze (RAW)** : Ingestion des fichiers CSV tels quels (tout en `VARCHAR`).
+* **Silver (STAGING)** : Nettoyage, typage des données, traduction des produits et conversion des devises en EUR.
+* **Gold (ANALYTICS)** : Agrégations métiers (Chiffre d'affaires mensuel, classements produits).
 
-### 1. Prerequisites
+## Stack Technique
 
-- Python 3.11+
-- Snowflake account
+* **Orchestration** : Airflow (TaskFlow API).
+* **Stockage & Calcul** : Snowflake.
+* **Transformation** : dbt (modèles, seeds et tests).
 
-### 2. Snowflake Setup
+## Fonctionnement du Pipeline
 
-Run `snowflake/init.sql` in Snowflake to create:
-- Warehouse, database, schemas (Medallion architecture)
-- File format and stage for data loading
-- Target table for sales data
+Le DAG Airflow `01_ingest_sales_data` exécute les étapes suivantes :
 
-### 3. Airflow Setup
+1. **Scan** : Détection des nouveaux CSV dans le dossier `data/inbox/`.
+2. **Ingestion** : Upload vers un Stage Snowflake et chargement dans la table `RAW` (via `COPY INTO`).
+3. **Archivage** : Déplacement des fichiers traités vers `data/archive/` avec un timestamp.
+4. **Transformation (dbt)** :
+* `dbt seed` : Chargement des référentiels (taux de change, formats de date par ville, catalogue produits).
+* `dbt run` : Exécution des modèles Silver et Gold.
+* `dbt test` : Validation de la qualité des données.
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
 
-# Initialize Airflow
-export AIRFLOW_HOME=$(pwd)
-airflow db init
-airflow users create \
-    --username admin \
-    --firstname Admin \
-    --lastname User \
-    --role Admin \
-    --email admin@example.com \
-    --password admin
-```
 
-### 4. Configure Snowflake Connection
+## Points clés de l'implémentation
 
-In Airflow UI (Admin → Connections), create `snowflake_conn_id`:
+* **Traçabilité** : Le nom du fichier source est conservé dans chaque ligne (`METADATA$FILENAME`) pour identifier la provenance (boutique) et appliquer les règles de gestion spécifiques (devises, formats de date).
+* **Modularité** : Les taux de change et les traductions ne sont pas écrits en dur dans le SQL, mais gérés via des fichiers `seeds` (CSV) pour faciliter les mises à jour.
+* **Qualité** : Des tests de cohérence vérifient que les montants sont positifs et que les dates extraites correspondent bien au mois indiqué dans le nom du fichier.
 
-| Field | Value |
-|-------|-------|
-| Conn Type | Snowflake |
-| Account | your_account.region |
-| Login | your_username |
-| Password | your_password |
-| Schema | RAW |
-| Database | RETAIL_DB |
-| Warehouse | RETAIL_WH |
-| Role | AIRFLOW_ROLE |
+## Installation rapide
 
-### 5. Run
+1. **Snowflake** : Exécuter `snowflake/init.sql` dans un workspace snowflake.
+2. **Python** : `pip install -r requirements.txt`.
+3. **Airflow** : Configurer la connexion Snowflake dans l'interface, puis lancer via `bash start_airflow.sh`.
+4. **dbt** : Configurer le fichier `profiles.yml` avec vos accès Snowflake.
 
-```bash
-./start_airflow.sh
-```
+## Commandes utiles
 
-Access UI at http://localhost:8080
-
-## DAGs
-
-| DAG | Description |
-|-----|-------------|
-| `00_test_snowflake_connection` | Validates Snowflake connectivity |
-| `01_ingest_sales_data` | Loads CSVs from inbox → Snowflake → archive |
-
-## Data Ingestion
-
-See [docs/INGESTION.md](docs/INGESTION.md) for detailed documentation.
-
-## Project Structure
-
-```
-├── dags/                   # Airflow DAG definitions
-├── data/
-│   ├── inbox/              # CSV files to process
-│   └── archive/            # Processed files
-├── snowflake/              # SQL setup scripts
-├── docs/                   # Documentation
-└── .devcontainer/          # Dev container config
-```
+* **Lancer le pipeline** : Déposer un CSV dans `inbox/` et trigger le DAG sur Airflow.
+* **Lancer dbt manuellement** : `cd retail_transformation && dbt run`.
+* **Voir la doc dbt** : `dbt docs generate && dbt docs serve`.
